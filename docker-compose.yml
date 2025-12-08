@@ -1,0 +1,12 @@
+version: "3.8"
+services:
+  copilot-api:
+    env_file:
+      - .env
+    build: .
+    image: nickfan/copilot-api
+    volumes:
+      - ./copilot-data:/root/.local/share/copilot-api
+    ports:
+      - "4141:4141"
+    restart: unless-stopped
