@@ -140,3 +140,8 @@ export function getReasoningEffortForModel(
   const config = getConfig()
   return config.modelReasoningEfforts?.[model] ?? "high"
 }
+
+export function overrideSmallModel(model: string): void {
+  const config = getConfig()
+  config.smallModel = model
+}

@@ -6,7 +6,7 @@ import consola from "consola"
 import { serve, type ServerHandler } from "srvx"
 import invariant from "tiny-invariant"
 
-import { mergeConfigWithDefaults } from "./lib/config"
+import { mergeConfigWithDefaults, overrideSmallModel } from "./lib/config"
 import { ensurePaths } from "./lib/paths"
 import { initProxyFromEnv } from "./lib/proxy"
 import { generateEnvScript } from "./lib/shell"
@@ -25,6 +25,8 @@ interface RunServerOptions {
   claudeCode: boolean
   showToken: boolean
   proxyEnv: boolean
+  mainModel?: string
+  smallModel?: string
 }
 
 export async function runServer(options: RunServerOptions): Promise<void> {
@@ -33,6 +35,13 @@ export async function runServer(options: RunServerOptions): Promise<void> {
 
   if (options.proxyEnv) {
     initProxyFromEnv()
+  }
+
+  if (options.smallModel) {
+    overrideSmallModel(options.smallModel)
+    if (options.verbose) {
+      consola.info(`Using small model override: ${options.smallModel}`)
+    }
   }
 
   state.verbose = options.verbose
@@ -73,21 +82,19 @@ export async function runServer(options: RunServerOptions): Promise<void> {
   if (options.claudeCode) {
     invariant(state.models, "Models should be loaded by now")
 
-    const selectedModel = await consola.prompt(
-      "Select a model to use with Claude Code",
-      {
+    const selectedModel =
+      options.mainModel
+      ?? (await consola.prompt("Select a model to use with Claude Code", {
         type: "select",
         options: state.models.data.map((model) => model.id),
-      },
-    )
+      }))
 
-    const selectedSmallModel = await consola.prompt(
-      "Select a small model to use with Claude Code",
-      {
+    const selectedSmallModel =
+      options.smallModel
+      ?? (await consola.prompt("Select a small model to use with Claude Code", {
         type: "select",
         options: state.models.data.map((model) => model.id),
-      },
-    )
+      }))
 
     const command = generateEnvScript(
       {
@@ -193,6 +200,17 @@ export const start = defineCommand({
       default: false,
       description: "Initialize proxy from environment variables",
     },
+    "main-model": {
+      alias: "m",
+      type: "string",
+      description: "Main model identifier for Claude Code generation",
+    },
+    "small-model": {
+      alias: "s",
+      type: "string",
+      description:
+        "Small model identifier for Claude Code generation and server fallback",
+    },
   },
   run({ args }) {
     const rateLimitRaw = args["rate-limit"]
@@ -211,6 +229,8 @@ export const start = defineCommand({
       claudeCode: args["claude-code"],
       showToken: args["show-token"],
       proxyEnv: args["proxy-env"],
+      mainModel: args["main-model"],
+      smallModel: args["small-model"],
     })
   },
 })
